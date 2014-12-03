@@ -14,7 +14,8 @@ public:
 	OculusCamera(Engine* e, ovrHmd hmd): 
 		Camera(e),
 		myHMD(hmd),
-		myInitialized(false)
+		myInitialized(false),
+		mySpeedVector(0,0,0)
 	{
 	}
 
@@ -25,6 +26,7 @@ public:
     virtual void finishFrame(const FrameInfo& frame);
 	virtual void clear(DrawContext& context);
 	virtual bool isEnabledInContext(const DrawContext& context) { return true; }
+    virtual void updateTraversal(const UpdateContext& context);
 
 	void initializeGraphics(const DrawContext& context);
 
@@ -35,10 +37,14 @@ private:
 	Ref<Texture> myDepthTexture;
 	
     /// OVR hardware
+	ovrTrackingState myHmdState;
 	ovrHmd myHMD;
 	ovrEyeRenderDesc myEyeRenderDesc[2];
 	ovrPosef myEyeRenderPose[2];
 	ovrRecti myEyeRenderViewport[2];
 	ovrGLTexture myEyeTexture[2];
+
+	// Navigation stuff
+	Vector3f mySpeedVector;
 };
 #endif

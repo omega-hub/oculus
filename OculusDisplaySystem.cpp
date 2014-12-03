@@ -38,7 +38,17 @@ void displayCallback(void)
 	uc.dt = t - lt;
 	lt = t;
 
+// Make sure we preserve the OpenGL context (some libraries like OSG may 
+// play with it during initialization)
+#ifdef OMEGA_OS_WIN
+    HDC _hdc = wglGetCurrentDC();
+    HGLRC _hglrc = wglGetCurrentContext();
+#endif
 	as->update(uc);
+
+#ifdef OMEGA_OS_WIN
+	wglMakeCurrent(_hdc, _hglrc);
+#endif
 
 	// setup the context viewport.
 	DrawContext dc;
@@ -147,6 +157,7 @@ void OculusDisplaySystem::run()
 			myCamera->setup(s);
 		}
 		myEngine->setDefaultCamera(myCamera);
+		myEngine->getScene()->addChild(myCamera);
 
 		//myFrameBuffer = new RenderTarget();
 		//myFrameBuffer->initialize(RenderTarget::TypeFrameBuffer, myResolution[0], myResolution[1]);
