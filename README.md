@@ -1,6 +1,8 @@
 # rift - Oculus Rift support for omegalib
 This module adds Oculus Rift support to omegalib。
 
+**Version Requirement**: This module only works with omegalib version 6.0-beta3 and higher
+
 ## Building the rift module
 This module builds like any other omegalib module. You need to have the Oculus SDK on your machine,
 and set the `OVR_INCLUDE_DIR` and `OVR_LIB` to the SDK include directory and library file respectively.
