@@ -23,33 +23,7 @@ void OculusCamera::handleEvent(const Event& evt)
 	{
 		ovrHmd_DismissHSWDisplay(myHMD);
 	}
-
-	// Implement simple gamepad-based navigation.
-	if(evt.getServiceType() == Service::Controller)
-	{
-		float x = evt.getExtraDataFloat(0);
-		float z = evt.getExtraDataFloat(1);
-
-		float y = evt.getExtraDataFloat(3);
-		float tresh = 0.3f;
-
-		if(abs(x) < tresh) x = 0;
-		if(abs(y) < tresh) y = 0;
-		if(abs(z) < tresh) z = 0;
-
-		ovrQuatf& ovro = myHmdState.HeadPose.ThePose.Orientation;
-		Quaternion q(ovro.w, ovro.x, ovro.y, ovro.z);
-		mySpeedVector = q * Vector3f(x,y,z);
-	}
-
 	Camera::handleEvent(evt);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-void OculusCamera::updateTraversal(const UpdateContext& context)
-{
-	translate(mySpeedVector * context.dt, Node::TransformWorld);
-	Camera::updateTraversal(context);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -159,7 +133,7 @@ void OculusCamera::beginDraw(DrawContext& context)
 	if(context.task == DrawContext::SceneDrawTask)
 	{
 		static float     BodyYaw = 0;
-		Vector3f h = getPosition();// + getHeadOffset();
+		Vector3f h = getPosition() + getHeadOffset();
 		OVR::Vector3f HeadPos(h[0], h[1], h[2]);
 
 		ovrRecti& erv = myEyeRenderViewport[(context.eye == DrawContext::EyeLeft) ? 0 : 1];
@@ -173,8 +147,11 @@ void OculusCamera::beginDraw(DrawContext& context)
 
 		context.tile->activeRect = Rect(0,0,myRenderTexture->getWidth(),myRenderTexture->getHeight()); 
 
-        OVR::Matrix4f rollPitchYaw = OVR::Matrix4f::RotationY(BodyYaw);
-        OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(erp.Orientation);
+		const Quaternion& ocamo = getOrientation();
+		Vector3f euler = Math::quaternionToEuler(ocamo);
+		
+		OVR::Matrix4f rollPitchYaw = OVR::Matrix4f().RotationX(euler.x()).RotationY(euler.y());
+		OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(erp.Orientation);
         OVR::Vector3f finalUp            = finalRollPitchYaw.Transform(OVR::Vector3f(0,1,0));
         OVR::Vector3f finalForward       = finalRollPitchYaw.Transform(OVR::Vector3f(0,0,-1));
         OVR::Vector3f shiftedEyePos      = HeadPos + rollPitchYaw.Transform(erp.Position);

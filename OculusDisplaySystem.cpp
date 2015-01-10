@@ -61,7 +61,6 @@ void displayCallback(void)
 	dc.renderer = ac;
 
 	Camera* cam = Engine::instance()->getDefaultCamera();
-	cam->setHeadOffset(Vector3f(0,2,0));
 
 	dc.camera = cam;
 
@@ -156,6 +155,7 @@ void OculusDisplaySystem::run()
 			Setting& s = syscfg->lookup("config/camera");
 			myCamera->setup(s);
 		}
+
 		myEngine->setDefaultCamera(myCamera);
 		myEngine->getScene()->addChild(myCamera);
 
@@ -165,9 +165,6 @@ void OculusDisplaySystem::run()
 		myRenderer->setGpuContext(myGpuContext);
 		myRenderer->initialize();
 	}
-
-	clearColor(false);
-	clearDepth(false);
 
     ovrHmd_SetEnabledCaps(myHMD, ovrHmdCap_LowPersistence | ovrHmdCap_DynamicPrediction);
 
