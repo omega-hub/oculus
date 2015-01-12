@@ -51,7 +51,7 @@ if( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
   set_target_properties(${MODULE_NAME} PROPERTIES LINK_FLAGS "-ludev -lXinerama")
 endif( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
 
-install(FILES ./oculus.cfg DESTINATION omegalib/oculus)
+install(FILES ./rift.cfg DESTINATION omegalib/oculus)
 
 #------------------------------------------------------------------------------
 # DO NOT MODIFY ANYTHING BELOW AFTER THIS LINE
