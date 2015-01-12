@@ -22,6 +22,164 @@ using namespace omega;
 // The global service instance, used by the python API to control the service.
 class OculusDisplaySystem* sInstance = NULL;
 
+// 8/12/14 LOGIC CHANGE
+// Now 'button' processing for Keyboard events works same as gamepads:
+// Flag is set for button down events and stays set until AFTER the corresponding
+// button up, so isButtonUp(ButtonName) works consistently and as expected.
+#define HANDLE_KEY_FLAG(keycode, flag) \
+    if(key == keycode && type == Event::Down) sKeyFlags |= Event::flag; \
+    if(key == keycode && type == Event::Up) keyFlagsToRemove |= Event::flag;
+
+///////////////////////////////////////////////////////////////////////////////
+static uint sKeyFlags = 0;
+void keyboardButtonCallback( uint key, Event::Type type )
+{
+	ServiceManager* sm = SystemManager::instance()->getServiceManager();
+    sm->lockEvents();
+
+    Event* evt = sm->writeHead();
+    evt->reset(type, Service::Keyboard, key);
+
+    uint keyFlagsToRemove = 0;
+
+    HANDLE_KEY_FLAG(296, Alt)
+    HANDLE_KEY_FLAG(292, Shift)
+    HANDLE_KEY_FLAG(294, Ctrl)
+
+    // Convert arrow keys to buttons. This allows user code to do es. 
+    // evt.isButtonDown(Event::ButtonLeft) without having to make a 
+    // separate call to isKeyDown when using keyboards instead of gamepads.
+    HANDLE_KEY_FLAG(KC_LEFT, ButtonLeft);
+    HANDLE_KEY_FLAG(KC_RIGHT, ButtonRight);
+    HANDLE_KEY_FLAG(KC_DOWN, ButtonDown);
+    HANDLE_KEY_FLAG(KC_UP, ButtonUp);
+
+    // Add some special keys as buttons
+    HANDLE_KEY_FLAG(KC_RETURN, Button4);
+    HANDLE_KEY_FLAG(KC_BACKSPACE, Button5);
+    HANDLE_KEY_FLAG(KC_TAB, Button6);
+    HANDLE_KEY_FLAG(KC_HOME, Button7);
+
+    evt->setFlags(sKeyFlags);
+
+    // Remove the bit of all buttons that have been unpressed.
+    sKeyFlags &= ~keyFlagsToRemove;
+
+	// If ESC is pressed, request exit.
+	if(evt->isKeyDown(27)) SystemManager::instance()->postExitRequest();
+
+    sm->unlockEvents();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void glutKeyDown(unsigned char key, int x, int y)
+{
+    keyboardButtonCallback((uint)key, Event::Down);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void glutKeyUp(unsigned char key, int x, int y)
+{
+    keyboardButtonCallback((uint)key, Event::Up);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+int sWheelAccum = 0;
+void mouseWheelCallback(int btn, int wheel, int x, int y)
+{
+	// GLUT generates a ton of wheel events. We accumulate them and
+	// generate single event when we pass a reasonable treshold
+	sWheelAccum += wheel;
+
+	if(abs(sWheelAccum) > 100)
+	{
+		sWheelAccum = 0;
+		ServiceManager* sm = SystemManager::instance()->getServiceManager();
+		sm->lockEvents();
+
+		Event* evt = sm->writeHead();
+		evt->reset(Event::Zoom, Service::Pointer);
+		evt->setPosition(x, y);
+
+		evt->setExtraDataType(Event::ExtraDataIntArray);
+		evt->setExtraDataInt(0, wheel);
+
+		sm->unlockEvents();
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+static Ray sPointerRay;
+unsigned int sButtonFlags = 0;
+void mouseMotionCallback(int x, int y)
+{
+	ServiceManager* sm = SystemManager::instance()->getServiceManager();
+	sm->lockEvents();
+
+	Event* evt = sm->writeHead();
+	evt->reset(Event::Move, Service::Pointer);
+	evt->setPosition(x, y);
+	evt->setFlags(sButtonFlags);
+
+	DisplaySystem* ds = SystemManager::instance()->getDisplaySystem();
+	sPointerRay = ds->getViewRay(Vector2i(x, y));
+
+	evt->setExtraDataType(Event::ExtraDataVector3Array);
+	evt->setExtraDataVector3(0, sPointerRay.getOrigin());
+	evt->setExtraDataVector3(1, sPointerRay.getDirection());
+
+	sm->unlockEvents();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void mouseButtonCallback(int button, int state, int x, int y)
+{
+	ServiceManager* sm = SystemManager::instance()->getServiceManager();
+	sm->lockEvents();
+
+	Event* evt = sm->writeHead();
+	evt->reset(state ? Event::Up : Event::Down, Service::Pointer);
+
+	if(button == 3) mouseWheelCallback(button, 1, x, y);
+	if(button == 4) mouseWheelCallback(button, -1, x, y);
+
+	// Update button flags
+	if(evt->getType() == Event::Down)
+	{
+		if(button == GLUT_LEFT_BUTTON) sButtonFlags |= Event::Left;
+		if(button == GLUT_RIGHT_BUTTON) sButtonFlags |= Event::Right;
+		if(button == GLUT_MIDDLE_BUTTON) sButtonFlags |= Event::Middle;
+	}
+	else
+	{
+		if(button == GLUT_LEFT_BUTTON) sButtonFlags &= ~Event::Left;
+		if(button == GLUT_RIGHT_BUTTON) sButtonFlags &= ~Event::Right;
+		if(button == GLUT_MIDDLE_BUTTON) sButtonFlags &= ~Event::Middle;
+	}
+
+	evt->setPosition(x, y);
+	// Note: buttons only contain active button flags, so we invoke
+	// setFlags first, to generate ButtonDown events that
+	// still contain the flag of the currently presset button.
+	// This is needed to make vent.isButtonUp(button) calls working.
+	if(state)
+	{
+		sButtonFlags = button;
+		evt->setFlags(sButtonFlags);
+	}
+	else
+	{
+		evt->setFlags(sButtonFlags);
+		sButtonFlags = button;
+	}
+
+	evt->setExtraDataType(Event::ExtraDataVector3Array);
+	evt->setExtraDataVector3(0, sPointerRay.getOrigin());
+	evt->setExtraDataVector3(1, sPointerRay.getDirection());
+
+	sm->unlockEvents();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 void displayCallback(void) 
 {
@@ -86,10 +244,10 @@ void displayCallback(void)
 	// poll the input manager for new events.
 	im->poll();
 
-	if(SystemManager::instance()->isExitRequested())
-	{
-		exit(0);
-	}
+	//if(SystemManager::instance()->isExitRequested())
+	//{
+	//	exit(0);
+	//}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -102,6 +260,12 @@ OculusDisplaySystem::OculusDisplaySystem():
 
 	// Setup and initialize Glut
 	glutInit(&argcp, &argv);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void exitfunc()
+{
+	sInstance->exit();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -126,7 +290,7 @@ void OculusDisplaySystem::run()
 	glutInitWindowPosition(myHMD->WindowsPos.x, myHMD->WindowsPos.y);
 	glutInitWindowSize(myHMD->Resolution.w, myHMD->Resolution.h);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH);
-	glutCreateWindow("oculus"); 
+	int winid = glutCreateWindow("oculus"); 
 
 	glewSetContext(&sGLEWContext);
 
@@ -156,6 +320,21 @@ void OculusDisplaySystem::run()
 			myCamera->setup(s);
 		}
 
+		// Register mouse/keyboard callbacks if enabled
+		if(syscfg->getBoolValue("config/oculus/keyboardMouseEnabled", false))
+		{
+			glutKeyboardFunc(glutKeyDown); 
+			glutKeyboardUpFunc(glutKeyUp); 
+			glutPassiveMotionFunc(mouseMotionCallback);
+			glutMotionFunc(mouseMotionCallback);
+			glutMouseFunc(mouseButtonCallback);
+			/** Apple's GLUT does not support the mouse wheel **/
+	#ifndef __APPLE__
+			glutMouseWheelFunc(mouseWheelCallback);
+	#endif
+		}
+
+
 		myEngine->setDefaultCamera(myCamera);
 		myEngine->getScene()->addChild(myCamera);
 
@@ -173,9 +352,23 @@ void OculusDisplaySystem::run()
                                     ovrTrackingCap_MagYawCorrection |
                                     ovrTrackingCap_Position, 0);
 
-	glutMainLoop();
+	glutCloseFunc(exitfunc);
 
+	while(!SystemManager::instance()->isExitRequested())
+	{
+		glutMainLoopEvent();
+	}
+
+	glutDestroyWindow(winid);
+	glutExit();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void OculusDisplaySystem::exit()
+{
 	sInstance = NULL;
+
 	// No OVR functions involving memory are allowed after this.
+	ovrHmd_Destroy(myHMD);
     ovr_Shutdown(); 
 }

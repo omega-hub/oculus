@@ -100,13 +100,14 @@ void OculusCamera::startFrame(const FrameInfo& frame)
 	if(!myInitialized) return;
 
 	ovrHmd_BeginFrame(myHMD, frame.frameNum); 
-
-
 	ovrVector3f hmdToEyeViewOffset[2] = 
 		{ myEyeRenderDesc[0].HmdToEyeViewOffset, myEyeRenderDesc[1].HmdToEyeViewOffset };
 	ovrHmd_GetEyePoses(myHMD, 0, hmdToEyeViewOffset, myEyeRenderPose, &myHmdState);
 
-
+	// Save head orientation
+	ovrQuatf& ovro = myHmdState.HeadPose.ThePose.Orientation;
+	Quaternion q(ovro.w, ovro.x, ovro.y, ovro.z);
+	//setHeadOrientation(q);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -158,6 +159,7 @@ void OculusCamera::beginDraw(DrawContext& context)
         OVR::Matrix4f view = OVR::Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + finalForward, finalUp); 
 		OVR::Matrix4f proj = ovrMatrix4f_Projection(erd.Fov, 0.01f, 10000.0f, true);
 
+		// TODO: SPEEDUP THIS ABOMINATION!
 		for(int i = 0; i < 4; i++) for(int j = 0; j < 4; j++)
 		{
 			context.modelview(i, j) = view.M[i][j];

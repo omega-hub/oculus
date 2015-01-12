@@ -20,6 +20,7 @@ public:
 	GpuContext* getGpuContext() { return myGpuContext; }
 
 	virtual void run();
+	void exit();
 
 private:
 	bool myInitialized;
