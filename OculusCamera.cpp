@@ -88,7 +88,7 @@ void OculusCamera::initializeGraphics(const DrawContext& context)
 	// Create render target
 	myRenderTarget = r->createRenderTarget(RenderTarget::RenderToTexture);
 	myDepthTexture = r->createTexture();
-	myDepthTexture->initialize(RenderTargetSize.w, RenderTargetSize.h, GL_DEPTH_COMPONENT);
+	myDepthTexture->initialize(RenderTargetSize.w, RenderTargetSize.h, Texture::Type2D, Texture::ChannelDepth, Texture::FormatFloat);
 	myRenderTarget->setTextureTarget(myRenderTexture, myDepthTexture);
 
 	myInitialized = true;
