@@ -71,7 +71,7 @@ void OculusCamera::initializeGraphics(const DrawContext& context)
 	// Configure OpenGL
 	ovrGLConfig cfg;
 	cfg.OGL.Header.API = ovrRenderAPI_OpenGL;
-	cfg.OGL.Header.RTSize = OVR::Sizei(myHMD->Resolution.w, myHMD->Resolution.h);
+	cfg.OGL.Header.BackBufferSize = OVR::Sizei(myHMD->Resolution.w, myHMD->Resolution.h);
 #ifdef OMEGA_OS_WIN
 	cfg.OGL.Window = wnd;
 	cfg.OGL.DC = dc;
@@ -79,7 +79,7 @@ void OculusCamera::initializeGraphics(const DrawContext& context)
 
 	if(!ovrHmd_ConfigureRendering(myHMD, &cfg.Config,  
 		ovrDistortionCap_Chromatic | ovrDistortionCap_Vignette |
-        ovrDistortionCap_TimeWarp | ovrDistortionCap_Overdrive,
+        /*ovrDistortionCap_TimeWarp | */ovrDistortionCap_Overdrive,
 								   eyeFov, myEyeRenderDesc))
 	{
 		owarn("ovrHmd_ConfigureRendering failed");
@@ -107,7 +107,7 @@ void OculusCamera::startFrame(const FrameInfo& frame)
 	// Save head orientation
 	ovrQuatf& ovro = myHmdState.HeadPose.ThePose.Orientation;
 	Quaternion q(ovro.w, ovro.x, ovro.y, ovro.z);
-	//setHeadOrientation(q);
+	setHeadOrientation(q);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
