@@ -1,5 +1,6 @@
 # Set the module name here
 set(MODULE_NAME oculus)
+module_version(1.0)
 
 if(NOT OMEGA_USE_PYTHON)
 	message(FATAL_ERROR "the oculus module requires python support (OMEGA_USE_PYTHON)") 
