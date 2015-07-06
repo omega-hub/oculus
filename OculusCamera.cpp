@@ -33,9 +33,9 @@ void OculusCamera::initializeGraphics(const DrawContext& context)
 	// Windows: retrieve HWND of current window and attach it to oculus HMD
 	HDC dc = wglGetCurrentDC();
 	HWND wnd = WindowFromDC(dc);
-	ovrHmd_AttachToWindow(myHMD, wnd, NULL, NULL);
+	//ovrHmd_AttachToWindow(myHMD, wnd, NULL, NULL);
 #endif
-
+	glEnable(GL_LIGHTING);
     //Configure Stereo settings.
     OVR::Sizei recommenedTex0Size = ovrHmd_GetFovTextureSize(myHMD, ovrEye_Left,  myHMD->DefaultEyeFov[0], 1.0f);
     OVR::Sizei recommenedTex1Size = ovrHmd_GetFovTextureSize(myHMD, ovrEye_Right, myHMD->DefaultEyeFov[1], 1.0f);
@@ -108,14 +108,17 @@ void OculusCamera::startFrame(const FrameInfo& frame)
 	ovrQuatf& ovro = myHmdState.HeadPose.ThePose.Orientation;
 	Quaternion q(ovro.w, ovro.x, ovro.y, ovro.z);
 	setHeadOrientation(q);
+	isOvrHmdBeginned = true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 void OculusCamera::finishFrame(const FrameInfo& frame)
 {
-	if(!myInitialized) return;
+	if (!myInitialized) return;
 	// Let OVR do distortion rendering, Present and flush/sync
-	ovrHmd_EndFrame(myHMD, myEyeRenderPose, &myEyeTexture[0].Texture);
+	if (isOvrHmdBeginned)
+		ovrHmd_EndFrame(myHMD, myEyeRenderPose, &myEyeTexture[0].Texture);
+	isOvrHmdBeginned = false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -150,8 +153,11 @@ void OculusCamera::beginDraw(DrawContext& context)
 
 		const Quaternion& ocamo = getOrientation();
 		Vector3f euler = Math::quaternionToEuler(ocamo);
-		
-		OVR::Matrix4f rollPitchYaw = OVR::Matrix4f().RotationX(euler.x()).RotationY(euler.y());
+		OVR::Matrix4f roll = OVR::Matrix4f::RotationZ(euler.z());
+		OVR::Matrix4f pitch = OVR::Matrix4f::RotationY(euler.y());
+		OVR::Matrix4f yaw = OVR::Matrix4f::RotationX(euler.x());
+
+		OVR::Matrix4f rollPitchYaw = roll*pitch*yaw; 
 		OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(erp.Orientation);
         OVR::Vector3f finalUp            = finalRollPitchYaw.Transform(OVR::Vector3f(0,1,0));
         OVR::Vector3f finalForward       = finalRollPitchYaw.Transform(OVR::Vector3f(0,0,-1));

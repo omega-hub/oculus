@@ -14,7 +14,8 @@ public:
 	OculusCamera(Engine* e, ovrHmd hmd): 
 		Camera(e),
 		myHMD(hmd),
-		myInitialized(false)
+		myInitialized(false),
+		isOvrHmdBeginned(false)
 	{
 	}
 
@@ -41,5 +42,6 @@ private:
 	ovrPosef myEyeRenderPose[2];
 	ovrRecti myEyeRenderViewport[2];
 	ovrGLTexture myEyeTexture[2];
+	bool isOvrHmdBeginned;
 };
 #endif
