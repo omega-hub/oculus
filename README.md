@@ -14,8 +14,7 @@ omega build master
 Istructions for OSX are similar but adjust the paths/library name accordingly.
 
 ## Using the rift module
-To run your application using the Oculus Rift render, simply choose an oculus rift configuration at 
-、startup. For instance when using orun:
+To run your application using the Oculus Rift render, simply choose an oculus rift configuration at startup. For instance when using orun:
 ```
 > orun -c oculus/rift.cfg -s <script name>
 ```	
